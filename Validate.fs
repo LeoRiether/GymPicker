@@ -89,3 +89,25 @@ let atLeastNFromTheCountries n countries =
         count >= n
 
     StandingsValidator inner
+
+// Assert all users in the standings pass the predicate
+let usersHaveProperty pred =
+    let extractUsername(a: HtmlNode) =
+        let href = a.AttributeValue("href")
+        if href.StartsWith "/profile/"
+            then Some (href.Substring 9) // remove /profile/ from the start
+            else None
+
+    let inner (html: HtmlDocument) =
+        html.CssSelect "table.standings .contestant-cell a"
+        |> Seq.choose extractUsername // choose is filterMap
+        |> Seq.forall pred
+
+    StandingsValidator inner
+
+let usersHaveNotParticipated users =
+    usersHaveProperty (fun u -> not (List.contains u users))
+
+// TODO: implement this
+// let usersHaveParticipated users =
+//     usersHaveProperty (fun u -> List.contains u users)

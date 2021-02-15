@@ -11,8 +11,7 @@ let validators = [
     either tutorial discussion;
     hasStandardIO;
     atLeastNFromTheCountries 2 ["br"];
-    // Validate.usersHaveNotParticipated ["LeoRiether"]; // soon
-    // Validate.usersHaveParticipated ["Nson"];
+    usersHaveNotParticipated ["LeoRiether"];
 ]
 
 // We only pick from the N most recent contests
