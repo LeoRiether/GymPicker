@@ -1,10 +1,18 @@
 open FSharp.Data
+open Validate
+
+let languages = Some ["en"; "pt"]
+let tutorial = hasTutorial languages
+let discussion = hasDiscussion languages
 
 // Change this to change your contest selection criteria
-let validate = Validate.forall [
-    Validate.difficultyBetween 4 4;
-    Validate.hasTutorial ["en"; "pt"];
-    Validate.hasStandardIO;
+let validators = [
+    difficultyBetween 4 4;
+    either tutorial discussion;
+    hasStandardIO;
+    atLeastNFromTheCountries 2 ["br"];
+    // Validate.usersHaveNotParticipated ["LeoRiether"]; // soon
+    // Validate.usersHaveParticipated ["Nson"];
 ]
 
 // We only pick from the N most recent contests
@@ -26,8 +34,12 @@ let randomShuffle a =
 
     a
 
-let loadGymPage id =
-    Gym.urlFromId id
+let loadContest id =
+    Gym.contestUrlFromId id
+    |> HtmlDocument.Load
+
+let loadStandings id =
+    Gym.standingsUrlFromId id
     |> HtmlDocument.Load
 
 
@@ -43,18 +55,26 @@ let main argv =
     let printProgressMessage (gym: Gym.T) =
         printfn "Testing %d (%s)..." gym.Id.Value gym.Name
 
+    let validate = forall validators
+
     let chosen =
         gyms
-        |> Seq.find (fun gym ->
+        |> Seq.tryFind (fun gym ->
             printProgressMessage gym
-            let html = lazy (loadGymPage gym.Id)
-            validate gym html
+            let contest = lazy (loadContest gym.Id)
+            let standings = lazy (loadStandings gym.Id)
+            validate gym contest standings
         )
 
-    printfn ""
-    printfn "Found suitable contest!"
-    printfn "%A" chosen
-    printfn ""
-    printfn "%s" (Gym.urlFromId chosen.Id)
+    match chosen with
+    | Some gym ->
+        printfn ""
+        printfn "Found suitable contest!"
+        printfn "%A" gym
+        printfn ""
+        printfn "%s" (Gym.contestUrlFromId gym.Id)
+    | None ->
+        printfn ""
+        printfn "Oh no! No contest was found for your criteria!"
 
     0

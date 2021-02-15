@@ -9,7 +9,8 @@ type Id =
         let (Id id) = this
         id
 
-let urlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
+let contestUrlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
+let standingsUrlFromId id = (contestUrlFromId id) + "/standings?showUnofficial=true"
 
 type T =
     {
