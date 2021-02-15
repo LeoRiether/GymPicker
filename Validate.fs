@@ -34,7 +34,7 @@ let difficultyBetween low high =
     JsonValidator (fun gym -> gym.Difficulty >= low && gym.Difficulty <= high)
 
 // Check if the contest has standard input and output
-let standardIO =
+let hasStandardIO =
     let inner (html: HtmlDocument) =
         html.CssSelect "table.problems .notice"
         |> List.forall (fun node -> node.InnerText().Contains("standard input/output"))
