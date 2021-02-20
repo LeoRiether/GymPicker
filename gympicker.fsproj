@@ -3,12 +3,14 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="Gym.fs" />
     <Compile Include="Validate.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Lib.fs" />
+    <Compile Include="Main.fs" />
   </ItemGroup>
 
   <ItemGroup>

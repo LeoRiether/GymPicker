@@ -31,6 +31,14 @@ let forall
     =
     List.forall (run gym contest standings) validators
 
+
+// Excludes some gym IDs
+let exclude idList =
+    let inner gym =
+        not (idList |> List.contains gym.Id)
+
+    APIValidator inner
+
 // Does the contest have a material with the name `tag`?
 // For example, `tag` can be "Tutorial", "Discussion", "Statements", ...
 let hasMaterial (tag: string) acceptedLanguagesOpt =
