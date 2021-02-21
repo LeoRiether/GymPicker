@@ -16,6 +16,7 @@ let validators =
     ]
 
 // We only pick from the N most recent contests
+[<Literal>]
 let N = 512
 
 // ------------------------------------------------------------------------------

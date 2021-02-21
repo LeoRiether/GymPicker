@@ -16,13 +16,6 @@ let randomShuffle a =
 
     a
 
-let loadContest id =
-    Gym.contestUrlFromId id
-    |> HtmlDocument.Load
-
-let loadStandings id =
-    Gym.standingsUrlFromId id
-    |> HtmlDocument.Load
 
 let pick log firstN validate =
     // Load gyms through the Codeforces API
@@ -40,16 +33,14 @@ let pick log firstN validate =
         gyms
         |> Seq.tryFind (fun gym ->
             logProgress gym
-            let contest = lazy (loadContest gym.Id)
-            let standings = lazy (loadStandings gym.Id)
-            validate gym contest standings
+            validate gym
         )
 
     match chosen with
     | Some gym ->
         log <| ""
         log <| "Found suitable contest!"
-        log <| sprintf "%A" gym
+        log <| gym.ToString()
         log <| ""
         log <| sprintf "%s" (Gym.contestUrlFromId gym.Id)
     | None ->

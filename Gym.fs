@@ -12,12 +12,29 @@ type Id =
 let contestUrlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
 let standingsUrlFromId id = (contestUrlFromId id) + "/standings?showUnofficial=true"
 
+type ContestHtml = ContestHtml of HtmlDocument
+type StandingsHtml = StandingsHtml of HtmlDocument
+
 type T =
     {
         Id: Id;
         Name: string;
         Difficulty: int;
+        Contest: Lazy<ContestHtml>;
+        Standings: Lazy<StandingsHtml>;
     }
+    override this.ToString() =
+        sprintf "{ Id = %d\n  Name = %s\n  Difficulty = %d }" this.Id.Value this.Name this.Difficulty
+
+let loadContest id =
+    contestUrlFromId id
+    |> HtmlDocument.Load
+    |> ContestHtml
+
+let loadStandings id =
+    standingsUrlFromId id
+    |> HtmlDocument.Load
+    |> StandingsHtml
 
 let fromJson (value: JsonValue) =
     let id = value?id.AsInteger()
@@ -29,8 +46,11 @@ let fromJson (value: JsonValue) =
         Id = Id id
         Name = name
         Difficulty = difficulty
+        Contest = lazy (loadContest (Id id))
+        Standings = lazy (loadStandings (Id id))
     }
 
+// Loads a Gym.T list from the Codeforces API
 let loadAll () =
     let gyms =
         Http.RequestString "https://codeforces.com/api/contest.list?gym=true"
@@ -38,5 +58,6 @@ let loadAll () =
 
     gyms?result.AsArray()
     |> Array.map fromJson
+
 
 let takeMostRecent n = Array.rev >> Array.take n
