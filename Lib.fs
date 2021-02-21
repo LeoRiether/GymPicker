@@ -42,7 +42,7 @@ let pick log firstN validate =
         log <| "Found suitable contest!"
         log <| gym.ToString()
         log <| ""
-        log <| sprintf "%s" (Gym.contestUrlFromId gym.Id)
+        log <| sprintf "%s" (Gym.problemsUrlFromId gym.Id)
     | None ->
         log <| ""
         log <| "Oh no! No contest was found for your criteria!"

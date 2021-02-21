@@ -9,10 +9,10 @@ type Id =
         let (Id id) = this
         id
 
-let contestUrlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
-let standingsUrlFromId id = (contestUrlFromId id) + "/standings?showUnofficial=true"
+let problemsUrlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
+let standingsUrlFromId id = (problemsUrlFromId id) + "/standings?showUnofficial=true"
 
-type ContestHtml = ContestHtml of HtmlDocument
+type ProblemsHtml = ProblemsHtml of HtmlDocument
 type StandingsHtml = StandingsHtml of HtmlDocument
 
 type T =
@@ -20,16 +20,16 @@ type T =
         Id: Id;
         Name: string;
         Difficulty: int;
-        Contest: Lazy<ContestHtml>;
+        Problems: Lazy<ProblemsHtml>;
         Standings: Lazy<StandingsHtml>;
     }
     override this.ToString() =
         sprintf "{ Id = %d\n  Name = %s\n  Difficulty = %d }" this.Id.Value this.Name this.Difficulty
 
-let loadContest id =
-    contestUrlFromId id
+let loadProblems id =
+    problemsUrlFromId id
     |> HtmlDocument.Load
-    |> ContestHtml
+    |> ProblemsHtml
 
 let loadStandings id =
     standingsUrlFromId id
@@ -46,7 +46,7 @@ let fromJson (value: JsonValue) =
         Id = Id id
         Name = name
         Difficulty = difficulty
-        Contest = lazy (loadContest (Id id))
+        Problems = lazy (loadProblems (Id id))
         Standings = lazy (loadStandings (Id id))
     }
 

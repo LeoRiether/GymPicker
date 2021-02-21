@@ -17,7 +17,7 @@ let exclude idList gym =
 // Does the contest have a material with the name `tag`?
 // For example, `tag` can be "Tutorial", "Discussion", "Statements", ...
 let hasMaterial (tag: string) acceptedLanguagesOpt (gym: Gym.T) =
-    let (Gym.ContestHtml html) = gym.Contest.Force()
+    let (Gym.ProblemsHtml html) = gym.Problems.Force()
 
     let isTutorialAnchor (a: HtmlNode) =
         let text = a.InnerText().Trim()
@@ -43,7 +43,7 @@ let difficultyBetween low high (gym: Gym.T) =
 
 // Check if the contest has standard input and output
 let hasStandardIO (gym: Gym.T) =
-    let (Gym.ContestHtml html) = gym.Contest.Force()
+    let (Gym.ProblemsHtml html) = gym.Problems.Force()
 
     html.CssSelect "table.problems .notice"
     |> List.forall (fun node -> node.InnerText().Contains("standard input/output"))
