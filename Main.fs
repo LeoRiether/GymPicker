@@ -1,4 +1,4 @@
-open Validate
+open Validate.Stored
 
 // Change this to change your contest selection criteria
 let validators =
@@ -7,11 +7,11 @@ let validators =
     let discussion = hasDiscussion languages
 
     [
-        exclude [];
-        difficultyBetween 4 4;
+        exclude [Gym.Id 102114];
+        difficultyBetween 3 4;
         either tutorial discussion;
         hasStandardIO;
-        atLeastNFromTheCountries 3 ["br"];
+        // atLeastNFromTheCountries 3 ["br"];
         usersHaveNotParticipated [];
     ]
 

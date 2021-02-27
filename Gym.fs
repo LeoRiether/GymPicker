@@ -12,6 +12,7 @@ type Id =
 let problemsUrlFromId (Id id) = sprintf "https://codeforces.com/gym/%d" id
 let standingsUrlFromId id = (problemsUrlFromId id) + "/standings?showUnofficial=true"
 
+
 type ProblemsHtml = ProblemsHtml of HtmlDocument
 type StandingsHtml = StandingsHtml of HtmlDocument
 

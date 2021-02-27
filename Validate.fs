@@ -3,90 +3,173 @@ module Validate
 open FSharp.Data
 open Gym
 
-let either a b gym =
-    (a gym) || (b gym)
+// The Base module defines the logic for the validators
+// Most functions here take some parameters and a `gym`, then return
+// a boolean checking whether the condition holds or not for the given gym.
+// The validators of this module generally shouldn't be used outside of this file,
+// as the Stored module wraps them into validators that can be stored in
+// the database to cache results.
+module Base =
+    // Excludes some gym IDs
+    let exclude idList gym =
+        not (idList |> List.contains gym.Id)
 
-// Asserts all validators pass
-let forall validators gym =
-    List.forall (fun f -> f gym) validators
+    // Does the contest have a material with the name `tag`?
+    // For example, `tag` can be "Tutorial", "Discussion", "Statements", ...
+    let hasMaterial (tag: string) acceptedLanguagesOpt (gym: Gym.T) =
+        let (ProblemsHtml problemsPage) = gym.Problems.Force()
 
-// Excludes some gym IDs
-let exclude idList gym =
-    not (idList |> List.contains gym.Id)
+        let isMaterialWeAreLookingFor (a: HtmlNode) =
+            let text = a.InnerText().Trim()
+            let startsWithTag = text.StartsWith tag
+            let endsWithLanguage =
+                match acceptedLanguagesOpt with
+                | Some langs ->
+                    langs |> List.exists (fun lang -> text.EndsWith ("(" + lang + ")"))
+                | None -> true
 
-// Does the contest have a material with the name `tag`?
-// For example, `tag` can be "Tutorial", "Discussion", "Statements", ...
-let hasMaterial (tag: string) acceptedLanguagesOpt (gym: Gym.T) =
-    let (Gym.ProblemsHtml html) = gym.Problems.Force()
+            startsWithTag && endsWithLanguage
 
-    let isTutorialAnchor (a: HtmlNode) =
-        let text = a.InnerText().Trim()
-        let startsWithTutorial = text.StartsWith tag
-        let endsWithLanguage =
-            match acceptedLanguagesOpt with
-            | Some langs ->
-                langs |> List.exists (fun lang -> text.EndsWith ("(" + lang + ")"))
-            | None -> true
+        problemsPage.Descendants ["a"]
+        |> Seq.exists isMaterialWeAreLookingFor
 
-        startsWithTutorial && endsWithLanguage
+    let difficultyBetween low high (gym: Gym.T) =
+        gym.Difficulty >= low && gym.Difficulty <= high
 
-    html.Descendants ["a"]
-    |> Seq.tryFind isTutorialAnchor
-    |> Option.isSome
+    // Check if the contest has standard input and output
+    let hasStandardIO (gym: Gym.T) =
+        let (Gym.ProblemsHtml html) = gym.Problems.Force()
 
-// Does the gym have a tutorial in one of the accepted languages?
-let hasTutorial = hasMaterial "Tutorial"
-let hasDiscussion = hasMaterial "Discussion"
+        html.CssSelect "table.problems .notice"
+        |> List.forall (fun node -> node.InnerText().Contains("standard input/output"))
 
-let difficultyBetween low high (gym: Gym.T) =
-    gym.Difficulty >= low && gym.Difficulty <= high
+    // Checks if at least N teams from a list of countries have participated
+    // Each country string should be listed as the two-character abbreviation of the country,
+    // like "br" for Brazil, "cn" for China, "us" for United States, etc. If you're not sure what
+    // abbreviation to use, go a standings page and open the flag image for your country in a new tab.
+    // The image should be named `{the two-character abbreviation of your country}.png`
+    let atLeastNFromTheCountries n countries (gym: Gym.T) =
+        let (Gym.StandingsHtml html) = gym.Standings.Force()
 
-// Check if the contest has standard input and output
-let hasStandardIO (gym: Gym.T) =
-    let (Gym.ProblemsHtml html) = gym.Problems.Force()
+        // Is the flag from one of the countries in `countries`?
+        let checkFlag (img: HtmlNode) =
+            countries
+            |> List.exists (fun country ->
+                img.AttributeValue("src").EndsWith(country + ".png")
+            )
 
-    html.CssSelect "table.problems .notice"
-    |> List.forall (fun node -> node.InnerText().Contains("standard input/output"))
+        let count =
+            html.CssSelect "img.standings-flag"
+            |> Seq.filter checkFlag
+            |> Seq.length
 
-// Checks if at least N teams from a list of countries have participated
-// Each country string should be listed as the two-character abbreviation of the country,
-// like "br" for Brazil, "cn" for China, "us" for United States, etc. If you're not sure what
-// abbreviation to use, go a standings page and open the flag image for your country in a new tab.
-// The image should be named `{the two-character abbreviation of your country}.png`
-let atLeastNFromTheCountries n countries (gym: Gym.T) =
-    let (Gym.StandingsHtml html) = gym.Standings.Force()
+        count >= n
 
-    // Is the flag from one of the countries in `countries`?
-    let checkFlag (img: HtmlNode) =
-        countries
-        |> List.exists (fun country ->
-            img.AttributeValue("src").EndsWith(country + ".png")
-        )
+    // Assert all users in the standings pass the predicate
+    let usersHaveProperty pred gym =
+        let (StandingsHtml html) = gym.Standings.Force()
 
-    let count =
-        html.CssSelect "img.standings-flag"
-        |> Seq.filter checkFlag
-        |> Seq.length
+        let extractUsername(a: HtmlNode) =
+            let href = a.AttributeValue("href")
+            if href.StartsWith "/profile/"
+                then Some (href.Substring 9) // remove /profile/ from the start
+                else None
 
-    count >= n
+        html.CssSelect "table.standings .contestant-cell a"
+        |> Seq.choose extractUsername // choose is filterMap
+        |> Seq.forall pred
 
-// Assert all users in the standings pass the predicate
-let usersHaveProperty pred gym =
-    let (Gym.StandingsHtml html) = gym.Standings.Force()
+    let usersHaveNotParticipated users =
+        usersHaveProperty (fun u -> not (List.contains u users))
 
-    let extractUsername(a: HtmlNode) =
-        let href = a.AttributeValue("href")
-        if href.StartsWith "/profile/"
-            then Some (href.Substring 9) // remove /profile/ from the start
-            else None
+    // TODO: implement this
+    // let usersHaveParticipated users =
+    //     usersHaveProperty (fun u -> List.contains u users)
 
-    html.CssSelect "table.standings .contestant-cell a"
-    |> Seq.choose extractUsername // choose is filterMap
-    |> Seq.forall pred
 
-let usersHaveNotParticipated users =
-    usersHaveProperty (fun u -> not (List.contains u users))
+//----------------------------------------------------------------------------------------
 
-// TODO: implement this
-// let usersHaveParticipated users =
-//     usersHaveProperty (fun u -> List.contains u users)
+
+// Here we wrap the Base validators into StoredValidator records that can
+// have the results cached in a database.
+// These are the validators you should be using outside of this file!
+module Stored =
+    open System
+
+    type SimpleValidator = Gym.T -> bool
+
+    type StoredValidator =
+        {
+            Fn: Gym.T -> bool;
+            Key: string;
+        }
+
+    type Validator =
+        | Simple of SimpleValidator
+        | Stored of StoredValidator
+
+    let run validator gym =
+        match validator with
+        | Simple fn -> fn gym
+        | Stored { Fn = fn; Key = key } ->
+            match DB.get key with
+            | Some cachedResult -> cachedResult
+            | None ->
+                let res = fn gym
+                DB.put key res
+                res
+
+    let runIfCached validator gym =
+        match validator with
+        | Simple fn -> Some (fn gym)
+        | Stored { Fn = _; Key = key } -> DB.get key
+
+    //
+    // Simple validators
+    //
+    let either a b =
+        let validate gym = (run a gym) || (run b gym)
+        Simple validate
+
+    let forall validators =
+        let validate gym = validators |> List.forall (fun v -> run v gym)
+        Simple validate
+
+    //
+    // Some utilities for making validator names
+    //
+    let join sep (lst: string list) = String.Join(sep, lst)
+    let joinBy sep mapping lst =
+        lst
+        |> List.map mapping
+        |> join sep
+
+    //
+    // Stored validators
+    //
+    let exclude idList =
+        let argsStr = idList |> joinBy "," (fun (Id id) -> string id)
+        let key = "exclude " + argsStr
+        Stored { Fn = Base.exclude idList; Key = key }
+
+    let hasMaterial (tag: string) acceptedLanguagesOpt =
+        let key = sprintf "hasMaterial %s,%A" tag acceptedLanguagesOpt
+        Stored { Fn = Base.hasMaterial tag acceptedLanguagesOpt; Key = key }
+
+    let hasTutorial = hasMaterial "Tutorial"
+    let hasDiscussion = hasMaterial "Discussion"
+
+    let difficultyBetween low high =
+        let key = sprintf "difficultyBetween %d,%d" low high
+        Stored { Fn = Base.difficultyBetween low high; Key = key }
+
+    let hasStandardIO =
+        Stored { Fn = Base.hasStandardIO; Key= "hasStandardIO" }
+
+    let atLeastNFromTheCountries n countries =
+        let key = sprintf "atLeastNFromTheCountries %d,%A" n countries
+        Stored { Fn = Base.atLeastNFromTheCountries n countries; Key = key }
+
+    let usersHaveNotParticipated users =
+        let key = sprintf "usersHaveNotParticipated %A" users
+        Stored { Fn = Base.usersHaveNotParticipated users; Key = key }
