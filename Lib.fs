@@ -1,6 +1,7 @@
 module GymPicker
 
 open FSharp.Data
+open Validate.Stored
 
 let rng = System.Random()
 
@@ -33,7 +34,10 @@ let pick log firstN validate =
         gyms
         |> Seq.tryFind (fun gym ->
             logProgress gym
-            validate gym
+
+            // Only runs `validate` for real if the cached version returns `None`
+            runCached validate gym
+            |> Option.defaultWith (fun () -> run validate gym)
         )
 
     match chosen with

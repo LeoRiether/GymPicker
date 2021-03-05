@@ -96,44 +96,75 @@ module Base =
 module Stored =
     open System
 
-    type SimpleValidator = Gym.T -> bool
+    type ValidatorFunction = Gym.T -> bool
 
     type StoredValidator =
         {
-            Fn: Gym.T -> bool;
+            Fn: ValidatorFunction;
             Key: string;
         }
 
     type Validator =
-        | Simple of SimpleValidator
+        | Simple of ValidatorFunction
         | Stored of StoredValidator
+        | OneOf  of Validator list
+        | AllOf of Validator list
 
-    let run validator gym =
+    let rec run validator gym =
         match validator with
         | Simple fn -> fn gym
         | Stored { Fn = fn; Key = key } ->
-            match DB.get key with
+            match DB.get key gym.Id with
             | Some cachedResult -> cachedResult
             | None ->
                 let res = fn gym
-                DB.put key res
+                DB.put key gym.Id res
                 res
+        | OneOf validators ->
+            validators |> List.exists (fun v -> run v gym)
+        | AllOf validators ->
+            validators |> List.forall (fun v -> run v gym)
 
-    let runIfCached validator gym =
+    let rec runCached validator gym =
         match validator with
         | Simple fn -> Some (fn gym)
-        | Stored { Fn = _; Key = key } -> DB.get key
+        | Stored { Fn = _; Key = key } -> DB.get key gym.Id
+
+        | OneOf validators ->
+            let folder s v =
+                match s, runCached v gym with
+                // all false -> Some false
+                | (Some false, Some false) -> Some false
+
+                // one true -> Some true
+                | (_, Some true) | (Some true, _) -> Some true
+
+                // no trues, but one none -> None
+                // (we should `run` the validator to know the result for sure)
+                | (Some false, None) | (None, _)  -> None
+
+            validators |> List.fold folder (Some false)
+
+        | AllOf validators ->
+            let folder s v =
+                match s, runCached v gym with
+                // all true -> Some true
+                | (Some true, Some true) -> Some true
+
+                // one false -> Some false
+                | (_, Some false) | (Some false, _) -> Some false
+
+                // no falses, but one none -> None
+                // (we should `run` the validator to know the result for sure)
+                | (Some true, None) | (None, Some true) | (None, None) -> None
+
+            validators |> List.fold folder (Some true)
 
     //
-    // Simple validators
+    // Combinator validators
     //
     let either a b =
-        let validate gym = (run a gym) || (run b gym)
-        Simple validate
-
-    let forall validators =
-        let validate gym = validators |> List.forall (fun v -> run v gym)
-        Simple validate
+        OneOf [a; b]
 
     //
     // Some utilities for making validator names
@@ -148,9 +179,7 @@ module Stored =
     // Stored validators
     //
     let exclude idList =
-        let argsStr = idList |> joinBy "," (fun (Id id) -> string id)
-        let key = "exclude " + argsStr
-        Stored { Fn = Base.exclude idList; Key = key }
+        Simple (Base.exclude idList)
 
     let hasMaterial (tag: string) acceptedLanguagesOpt =
         let key = sprintf "hasMaterial %s,%A" tag acceptedLanguagesOpt
@@ -164,7 +193,7 @@ module Stored =
         Stored { Fn = Base.difficultyBetween low high; Key = key }
 
     let hasStandardIO =
-        Stored { Fn = Base.hasStandardIO; Key= "hasStandardIO" }
+        Stored { Fn = Base.hasStandardIO; Key = "hasStandardIO" }
 
     let atLeastNFromTheCountries n countries =
         let key = sprintf "atLeastNFromTheCountries %d,%A" n countries

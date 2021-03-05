@@ -1,12 +1,12 @@
 open Validate.Stored
 
 // Change this to change your contest selection criteria
-let validators =
+let validate =
     let languages = Some ["en"; "pt"]
     let tutorial = hasTutorial languages
     let discussion = hasDiscussion languages
 
-    [
+    AllOf [
         exclude [Gym.Id 102114];
         difficultyBetween 3 4;
         either tutorial discussion;
@@ -23,8 +23,6 @@ let N = 512
 
 [<EntryPoint>]
 let main argv =
-    let validate = forall validators
-
     let log = printfn "%s"
     let pick = GymPicker.pick log
 
