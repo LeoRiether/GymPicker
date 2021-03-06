@@ -9,6 +9,9 @@ let createDb conn =
             gymId integer not null,
             valid integer not null
         );
+
+        create index if not exists cache_index_key_gymId
+        on cache (gymId, validatorKey);
     """
     let cmd = new SQLiteCommand(sql, conn)
     cmd.ExecuteNonQuery()
@@ -23,7 +26,6 @@ let conn =
 
     createDb conn |> ignore
 
-    printfn "db is connected"
     conn
 
 let get validatorKey (Gym.Id id): bool option =
