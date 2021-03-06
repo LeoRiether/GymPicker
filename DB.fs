@@ -17,7 +17,6 @@ let createDb conn =
 let conn =
     let dbFilename = "cache.sqlite"
     let connectionString = sprintf "Data Source=%s;Version=3;" dbFilename
-    SQLiteConnection.CreateFile(dbFilename)
 
     let conn = new SQLiteConnection(connectionString)
     conn.Open()
@@ -39,7 +38,7 @@ let get validatorKey (Gym.Id id): bool option =
 
     cmd.ExecuteScalar()
     |> Option.ofObj
-    |> Option.map (fun x -> if x :?> int = 0 then false else true)
+    |> Option.map (fun x -> if x :?> int64 = 0L then false else true)
 
 let put validatorKey (Gym.Id id) value =
     let sql = """
