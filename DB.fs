@@ -7,7 +7,8 @@ let createDb conn =
         create table if not exists cache (
             validatorKey text not null,
             gymId integer not null,
-            valid integer not null
+            valid integer not null,
+            addTime text
         );
 
         create index if not exists cache_index_key_gymId
@@ -28,7 +29,7 @@ let conn =
 
     conn
 
-let get validatorKey (Gym.Id id): bool option =
+let get (validatorKey: string) (Gym.Id id): bool option =
     let sql = """
         select valid
         from cache
@@ -42,10 +43,10 @@ let get validatorKey (Gym.Id id): bool option =
     |> Option.ofObj
     |> Option.map (fun x -> if x :?> int64 = 0L then false else true)
 
-let put validatorKey (Gym.Id id) value =
+let put (validatorKey: string) (Gym.Id id) (value: bool) =
     let sql = """
-        insert into cache (validatorKey, gymId, valid)
-        values (@validatorKey, @id, @valid);
+        insert into cache (validatorKey, gymId, valid, addTime)
+        values (@validatorKey, @id, @valid, datetime('now'));
     """
 
     let cmd = new SQLiteCommand(sql, conn)
