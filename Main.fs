@@ -12,7 +12,7 @@ let validate =
         either tutorial discussion;
         hasStandardIO;
         // atLeastNFromTheCountries 3 ["br"];
-        usersHaveNotParticipated [];
+        usersHaveNotParticipated ["LeoRiether"; "AlbertoTDNeto"; "Tiagodfs"];
     ]
 
 // We only pick from the N most recent contests

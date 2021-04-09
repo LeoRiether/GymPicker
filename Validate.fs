@@ -22,13 +22,14 @@ module Base =
         let isMaterialWeAreLookingFor (a: HtmlNode) =
             let text = a.InnerText().Trim()
             let startsWithTag = text.StartsWith tag
+            let endsWithNoLanguage = not (text.EndsWith ')')
             let endsWithLanguage =
                 match acceptedLanguagesOpt with
                 | Some langs ->
                     langs |> List.exists (fun lang -> text.EndsWith ("(" + lang + ")"))
                 | None -> true
 
-            startsWithTag && endsWithLanguage
+            startsWithTag && (endsWithNoLanguage || endsWithLanguage)
 
         problemsPage.Descendants ["a"]
         |> Seq.exists isMaterialWeAreLookingFor
